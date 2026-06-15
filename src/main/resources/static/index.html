@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>Spring AI Agent Demo</title>
+<style>
+body { font-family: -apple-system, "PingFang SC", sans-serif; max-width: 880px; margin: 24px auto; padding: 0 16px; color:#222; }
+h1 { font-size: 22px; }
+.row { display: flex; gap: 8px; margin-bottom: 12px; }
+.row > * { box-sizing: border-box; }
+input, select, button, textarea { font-size: 14px; padding: 8px 10px; border: 1px solid #ccc; border-radius: 6px; }
+input[type=text] { flex: 1; }
+button { background: #2c7be5; color: white; border: none; cursor: pointer; }
+button:hover { background: #1d6acb; }
+#out { white-space: pre-wrap; background: #fafafa; border: 1px solid #eaeaea; border-radius: 6px; padding: 14px; min-height: 220px; }
+small { color: #888; }
+.tag { display:inline-block; padding:2px 8px; border-radius: 999px; font-size: 12px; background:#eef; margin-right:6px; }
+</style>
+</head>
+<body>
+<h1>🤖 Spring AI Agent Demo</h1>
+<small>多模型路由 · 三层记忆 · RAG · 工具调用 · Skill · 意图识别 · SubAgent 编排 · A2A</small>
+
+<div class="row" style="margin-top:16px">
+  <input id="sid" type="text" value="demo-user" style="max-width:160px" placeholder="sessionId">
+  <select id="model"></select>
+  <button onclick="bindSession()">绑定模型到会话</button>
+  <button onclick="clearSession()">清空记忆</button>
+</div>
+
+<div class="row">
+  <input id="msg" type="text" placeholder='例如：你好 / 用 SQL 查最近 7 天订单 / 分析这份阿里 2025Q4 季报，对比腾讯同期，并起草投资简报邮件'>
+  <button onclick="send()">发送</button>
+</div>
+
+<div id="out">等待提问…</div>
+
+<script>
+async function loadModels() {
+    const r = await fetch('/api/chat/models');
+    const j = await r.json();
+    const sel = document.getElementById('model');
+    const auto = document.createElement('option');
+    auto.value = 'auto'; auto.text = '🤖 auto（智能路由）';
+    sel.appendChild(auto);
+    Object.entries(j.models).forEach(([k, v]) => {
+        const o = document.createElement('option');
+        o.value = k;
+        o.text = `${k} (${v.provider}/${v.model})${v.mock ? ' [MOCK]' : ''}`;
+        sel.appendChild(o);
+    });
+}
+loadModels();
+
+async function bindSession() {
+    const sid = document.getElementById('sid').value;
+    const model = document.getElementById('model').value;
+    if (model === 'auto') return alert('请选择具体模型');
+    await fetch(`/api/chat/session/${sid}/model?model=${model}`, { method: 'POST' });
+    alert('已绑定 ' + model + ' 到 session ' + sid);
+}
+
+async function clearSession() {
+    const sid = document.getElementById('sid').value;
+    await fetch(`/api/chat/session/${sid}`, { method: 'DELETE' });
+    document.getElementById('out').innerText = '记忆已清空';
+}
+
+async function send() {
+    const sid = document.getElementById('sid').value;
+    const msg = document.getElementById('msg').value;
+    const model = document.getElementById('model').value;
+    if (!msg) return;
+    const out = document.getElementById('out');
+    out.innerText = '';
+    const resp = await fetch('/api/chat/stream', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sessionId: sid, message: msg, model })
+    });
+    const reader = resp.body.getReader();
+    const decoder = new TextDecoder();
+    while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        const txt = decoder.decode(value, { stream: true });
+        // 解析 SSE
+        for (const line of txt.split('\n')) {
+            if (line.startsWith('data:')) out.innerText += line.slice(5);
+        }
+    }
+}
+</script>
+</body>
+</html>
