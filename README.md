@@ -147,6 +147,32 @@ agent:
 - 📗 第二篇：RAG · 工具 · MCP · Skill
 - 📕 第三篇：意图识别 · SubAgent 编排 · A2A · 生产化
 
+### 文章 vs 本仓库实现对照表
+
+文章描述的是目标架构；本仓库当前为**阶段 A 可运行骨架**。下面这张表把差异写明，避免读者照着文章 1:1 找不到对应代码。
+
+| 能力 | 文章描述 | 本仓库当前实现 | 状态 |
+|---|---|---|---|
+| 多模型注册 | DeepSeek / Qwen / GLM 通过 OpenAI 兼容协议接入 | 同 | ✅ 一致 |
+| 模型名 | `deepseek-v4-pro` / `qwen3.7-max` / `glm-5` 等 | 同（application.yml 已对齐） | ✅ 一致 |
+| 流式 SSE | `Flux<ServerSentEvent>` | 同 | ✅ 一致 |
+| 三层记忆 | L1 Redis + L2 摘要 + L3 PgVector | L1 Redis + L2 摘要 + L3 **Redis Set**（PgVector 留给阶段 B） | ⚠️ 简化 |
+| 模型路由 | Manual / Session / Auto 三策略 + 失败降级 | 同 | ✅ 一致 |
+| 意图识别 | LLM 结构化输出 `.entity(IntentResult.class)` | 同；mock 模式下自动降级到启发式 | ✅ 一致 |
+| 任务编排 | TaskDag 拓扑分层 + StructuredTaskScope 并发 | 同 | ✅ 一致 |
+| Chunker | 6 种（fixed / recursive / semantic / markdown / parent-child / sliding） | **3 种**（fixed / recursive / markdown） | ⚠️ 部分 |
+| 多路召回 | Vector + BM25 + HyDE | **TokenOverlap + Substring**（演示版） | ⚠️ 简化 |
+| RRF 融合 | 标准 RRF | 同 | ✅ 一致 |
+| Reranker | DashScope GTE-Rerank-v2 | 未接 | ❌ Roadmap |
+| @Tool 注解 | Spring AI `@Tool` | 同 | ✅ 一致 |
+| MCP Client/Server | `spring-ai-starter-mcp-*` 双写 | 未接 | ❌ Roadmap |
+| Skill 系统 | SKILL.md 加载 + 关键词 + 语义双路匹配 | 加载完整；**仅关键词**，语义路由接口已留 | ⚠️ 简化 |
+| A2A 协议 | Agent Card + tasks/send + SSE 流式 | Agent Card + tasks/send（同步） | ⚠️ 简化 |
+| Guardrails / 语义缓存 / LLM-as-Judge | 描述了实现 | 未接 | ❌ Roadmap |
+
+⚠️ = 接口骨架已就位、可演示主流程，但部分能力简化或留给阶段 B；
+❌ = Roadmap 中。
+
 ## 🧭 Roadmap（阶段 B 增量补完）
 
 - [ ] PgVector 真实 Embedding 索引
