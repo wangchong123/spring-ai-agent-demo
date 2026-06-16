@@ -8,7 +8,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.memory.ChatMemory;
 import org.springframework.ai.chat.messages.AssistantMessage;
 import org.springframework.ai.chat.messages.Message;
-import org.springframework.ai.chat.messages.MessageType;
 import org.springframework.ai.chat.messages.SystemMessage;
 import org.springframework.ai.chat.messages.UserMessage;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -135,12 +134,11 @@ public class LayeredChatMemory implements ChatMemory {
             Map<String, Object> map = mapper.readValue(json, Map.class);
             String type = String.valueOf(map.get("type"));
             String text = String.valueOf(map.getOrDefault("text", ""));
-            MessageType mt = MessageType.fromValue(type);
-            return switch (mt) {
-                case USER -> new UserMessage(text);
-                case ASSISTANT -> new AssistantMessage(text);
-                case SYSTEM -> new SystemMessage(text);
-                default -> null;
+            return switch (type.toLowerCase()) {
+                case "user"      -> new UserMessage(text);
+                case "assistant" -> new AssistantMessage(text);
+                case "system"    -> new SystemMessage(text);
+                default          -> null;
             };
         } catch (Exception e) {
             return null;

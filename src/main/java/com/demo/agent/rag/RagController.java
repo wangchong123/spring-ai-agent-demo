@@ -25,9 +25,10 @@ public class RagController {
     @PostMapping("/ingest")
     public Map<String, Object> ingest(@RequestBody IngestRequest req) {
         String docId = req.docId() == null ? "doc-" + System.currentTimeMillis() : req.docId();
+        int target = (req.targetSize() == null || req.targetSize() <= 0) ? 400 : req.targetSize();
+        int overlap = (req.overlap() == null || req.overlap() < 0) ? 50 : req.overlap();
         List<TextChunk> chunks = recursive.split(req.content(),
-                new ChunkContext(req.targetSize() <= 0 ? 400 : req.targetSize(),
-                        req.overlap() < 0 ? 50 : req.overlap(), docId));
+                new ChunkContext(target, overlap, docId));
         List<String> ids = kb.ingest(chunks);
         return Map.of("ok", true, "docId", docId, "chunks", chunks.size(), "ids", ids);
     }
@@ -45,5 +46,5 @@ public class RagController {
         return Map.of("ok", true);
     }
 
-    public record IngestRequest(String docId, String content, int targetSize, int overlap) {}
+    public record IngestRequest(String docId, String content, Integer targetSize, Integer overlap) {}
 }

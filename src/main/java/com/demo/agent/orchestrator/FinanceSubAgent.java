@@ -26,6 +26,7 @@ public class FinanceSubAgent implements SubAgent {
                 .map(e -> "[%s]\n%s".formatted(e.getKey(), e.getValue()))
                 .collect(Collectors.joining("\n\n"));
         try {
+            var picked = tools.pick(List.of("queryReport", "compareReport"));
             return factory.client("deepseek-pro").prompt()
                     .system("""
                         你是财务分析专家。基于上游任务结果与可用工具，完成本任务。
@@ -38,7 +39,7 @@ public class FinanceSubAgent implements SubAgent {
                         上游结果：
                         %s
                         """.formatted(task.name(), task.description(), upstreamCtx))
-                    .toolCallbacks(tools.pick(List.of("queryReport", "compareReport")))
+                    .tools((Object[]) picked.toArray(new org.springframework.ai.tool.ToolCallback[0]))
                     .call().content();
         } catch (Exception e) {
             log.warn("FinanceSubAgent.run failed: {}", e.getMessage());

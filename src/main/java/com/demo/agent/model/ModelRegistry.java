@@ -2,13 +2,16 @@ package com.demo.agent.model;
 
 import com.demo.agent.config.AgentProperties;
 import com.demo.agent.mock.MockChatModel;
+import com.openai.client.OpenAIClient;
+import com.openai.client.OpenAIClientImpl;
+import com.openai.core.ClientOptions;
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.model.ChatModel;
 import org.springframework.ai.openai.OpenAiChatModel;
 import org.springframework.ai.openai.OpenAiChatOptions;
-import org.springframework.ai.openai.api.OpenAiApi;
+import org.springframework.ai.openai.http.okhttp.SpringAiOpenAiHttpClient;
 import org.springframework.stereotype.Component;
 
 import java.util.Collections;
@@ -38,17 +41,22 @@ public class ModelRegistry {
             } else if (!hasKey) {
                 throw new IllegalStateException("Model " + key + " has no API key, and mock fallback is disabled.");
             } else {
-                OpenAiApi api = OpenAiApi.builder()
+                // Spring AI 2.0：底层换成 OpenAI 官方 Java SDK（com.openai.client.OpenAIClient）
+                // 走 SpringAiOpenAiHttpClient（基于 OkHttp）+ ClientOptions 拼出 OpenAIClient
+                ClientOptions clientOptions = ClientOptions.builder()
+                        .httpClient(SpringAiOpenAiHttpClient.builder().build())
                         .baseUrl(cfg.getBaseUrl())
                         .apiKey(cfg.getApiKey())
                         .build();
+                OpenAIClient openAiClient = new OpenAIClientImpl(clientOptions);
+
                 OpenAiChatOptions options = OpenAiChatOptions.builder()
                         .model(cfg.getModel())
                         .temperature(0.3)
                         .build();
                 cm = OpenAiChatModel.builder()
-                        .openAiApi(api)
-                        .defaultOptions(options)
+                        .openAiClient(openAiClient)
+                        .options(options)
                         .build();
                 isMock = false;
                 log.info("Model [{}] registered: provider={}, model={}", key, cfg.getProvider(), cfg.getModel());
